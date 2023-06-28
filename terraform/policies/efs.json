@@ -1,0 +1,23 @@
+{
+    "Version": "2012-10-17",
+    "Id": "efs-policy-wizard-cef4c8ae-a3e4-4b4d-b2cc-b71f272283dd",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Action": [
+                "elasticfilesystem:ClientMount",
+                "elasticfilesystem:ClientWrite"
+            ],
+            "Resource": "${filesystem_arn}",
+            "Condition": {
+                "StringEquals": {
+                    "aws:PrincipalArn": "${task_role_arn}",
+                    "elasticfilesystem:AccessPointArn": "${access_point_arn}"
+                }
+            }
+        }
+    ]
+}

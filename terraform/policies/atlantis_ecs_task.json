@@ -1,0 +1,208 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "LogsPermissions",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:ListTagsLogGroup",
+                "logs:TagLogGroup",
+                "logs:PutRetentionPolicy",
+                "logs:DeleteLogGroup",
+                "cloudwatch:DescribeAlarmsForMetric",
+                "cloudwatch:GetMetricData"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "EC2Permissions",
+            "Action": [
+                "elasticloadbalancing:Describe*",
+                "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+                "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+                "elasticloadbalancing:AddTags",
+                "ec2:AuthorizeSecurityGroupIngress",
+                "ec2:AuthorizeSecurityGroupEgress",
+                "ec2:DeleteNetworkInterface",
+                "ec2:Region",
+                "ec2:Create*",
+                "ec2:Describe*",
+                "ec2:RevokeSecurityGroupEgress",
+                "ec2:DeleteSecurityGroup",
+                "ec2:RevokeSecurityGroupIngress",
+                "ec2:ModifySecurityGroupRules",
+                "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+                "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+                "ec2:Associate*",
+                "elasticloadbalancing:RegisterTargets",
+                "elasticloadbalancing:DeregisterTargets",
+                "elasticloadbalancing:Create*",
+                "elasticloadbalancing:DeleteLoadBalancer",
+                "elasticloadbalancing:Modify*",
+                "elasticloadbalancing:Set*"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "LambdaPermissions",
+            "Action": [
+                "lambda:Create*",
+                "lambda:Get*",
+                "lambda:InvokeFunction",
+                "lambda:List*",
+                "lambda:Publish*",
+                "lambda:Put*",
+                "lambda:TagResource",
+                "lambda:UntagResource",
+                "lambda:Update*",
+                "lambda:Add*"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "IAMPermissions",
+            "Action": [
+                "iam:Get*",
+                "iam:List*",
+                "iam:Create*",
+                "iam:PassRole",
+                "iam:Put*",
+                "iam:Tag*",
+                "iam:Untag*",
+                "iam:*",
+                "sts:AssumeRole"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "ECSPermissions",
+            "Action": [
+                "ecs:Describe*",
+                "ecs:*"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "ECRPermissions",
+            "Action": [
+                "ecr:List*",
+                "ecr:Create*",
+                "ecr:Describe*",
+                "ecr:Get*",
+                "ecr:Tag*",
+                "ecr:Put*",
+                "ecr:Set*"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "OrganizationPermissions",
+            "Action": [
+                "organizations:Describe*"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "ListObjectsInBucket",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:Create*",
+                "s3:List*",
+                "s3:Put*",
+                "s3:Get*",
+                "s3:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "KMSPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "kms:DescribeKey",
+                "kms:ListAliases"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SSMPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:Describe*",
+                "ssm:Get*",
+                "ssm:Put*",
+                "ssm:List*",
+                "ssm:AddTagsToResource"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllObjectActions",
+            "Effect": "Allow",
+            "Action": "s3:*Object*",
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllCodebuildCodepipeline",
+            "Effect": "Allow",
+            "Action": [
+                "codebuild:*",
+                "codepipeline:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Route53Permissions",
+            "Action": [
+                "route53:GetChange",
+                "route53:GetHostedZone",
+                "route53:ListHostedZones",
+                "route53:ListResourceRecordSets",
+                "route53:ListTagsForResource",
+                "route53:ChangeTagsForResource"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Sid": "EFSManage",
+            "Action": [
+                "elasticfilesystem:Backup",
+                "elasticfilesystem:Create*",
+                "elasticfilesystem:Delete*",
+                "elasticfilesystem:Describe*",
+                "elasticfilesystem:ListTagsForResource",
+                "elasticfilesystem:ModifyMountTargetSecurityGroups",
+                "elasticfilesystem:Put*",
+                "elasticfilesystem:Restore",
+                "elasticfilesystem:TagResource",
+                "elasticfilesystem:UntagResource",
+                "elasticfilesystem:UpdateFileSystem"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Action": "iam:CreateServiceLinkedRole",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Condition": {
+                "StringLike": {
+                    "iam:AWSServiceName": [
+                        "elasticfilesystem.amazonaws.com"
+                    ]
+                }
+            }
+        }
+    ]
+}

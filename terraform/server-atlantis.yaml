@@ -1,0 +1,148 @@
+repos:
+  # id can either be an exact repo ID or a regex.
+  # If using a regex, it must start and end with a slash.
+  # Repo ID's are of the form {VCS hostname}/{org}/{repo name}, ex.
+  # github.com/runatlantis/atlantis.
+  - id: /.*/
+    # branch is an regex matching pull requests by base branch
+    # (the branch the pull request is getting merged into).
+    # By default, all branches are matched
+    branch: /^(main|develop)$/
+
+    # pre_workflow_hooks defines arbitrary list of scripts to execute before workflow execution.
+    pre_workflow_hooks:
+        - run: /home/atlantis/atlantis_config_gen.sh
+        - run: echo "$SSH_PRIVATE_KEY" > /home/atlantis/private_key && chmod 400 /home/atlantis/private_key
+        - run: git clone ssh://git@<Bitbucket server>/<opa policies repo>.git /home/atlantis/opa-policies
+
+    # allowed_overrides specifies which keys can be overridden by this repo in
+    # its atlantis.yaml file.
+    allowed_overrides: [workflow]
+
+    # allowed_workflows specifies which workflows the repos that match 
+    # are allowed to select.
+    allowed_workflows: [dev, prod, uat, state_bucket]
+    # apply_requirements sets the Apply Requirements for all repos that match.
+    apply_requirements:
+      - approved
+      - mergeable
+
+  #- id: /module-*/
+  #  branch: main
+  #  pre_workflow_hooks:
+  #      - run: ./atlantis_config_gen.sh
+  #      - run: git clone <opa_policies_repo> ../
+  #  allowed_workflows: [modules]
+  #  apply_requirements:
+  #    - approved
+  #    - mergeable
+
+workflows:
+  dev:
+    plan:
+      steps:
+      - run: if [ "${BASE_BRANCH_NAME}" != "develop" ]; then echo "The BASE branch ($BASE_BRANCH_NAME) is NOT allowed to deploy in DEV environment" && exit 1; fi
+      - init
+      - plan
+      - run: terraform show -json $PLANFILE > $SHOWFILE
+      - run: cp $SHOWFILE "${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json"
+      - run: aws s3 cp "${DIR}/${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json" s3://${S3_STORING_PLANS}/plans/dev/planned/$(date +"%m_%d_%y")/ >/dev/null
+    apply:
+      steps:
+      - apply
+      - run: cp $SHOWFILE "${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json"
+      - run: aws s3 cp "${DIR}/${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json" s3://${S3_STORING_PLANS}/plans/dev/applied/$(date +"%m_%d_%y")/ >/dev/null
+    policy_check:
+      steps:
+      - run: conftest pull git::ssh://${OPA_POLICIES_REPO}
+      - run: conftest test --update git::ssh://${OPA_POLICIES_REPO} $(basename $SHOWFILE) -o table -p policy/common_policies/ -p policy/dev --all-namespaces
+
+  prod:
+    plan:
+      steps:
+      - run: if [ "${BASE_BRANCH_NAME}" != "main" ]; then echo "The BASE branch ($BASE_BRANCH_NAME) is NOT allowed to deploy in PRODUCTION environment" && exit 1; fi
+      - init
+      - plan
+      - env:
+          name: GIT_TAG
+          command: 'git rev-parse --verify --short HEAD'
+      - run: terraform show -json $PLANFILE > $SHOWFILE
+      - run: cp $SHOWFILE "${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse --verify --short HEAD).json"
+      - run: aws s3 cp "${DIR}/${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json" s3://${S3_STORING_PLANS}/plans/prod/planned/$(date +"%m_%d_%y")/ >/dev/null
+    apply:
+      steps:
+      - apply
+      - run: cp $SHOWFILE "${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json"
+      - run: aws s3 cp "${DIR}/${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json" s3://${S3_STORING_PLANS}/plans/prod/applied/$(date +"%m_%d_%y")/ >/dev/null
+    policy_check:
+      steps:
+      - env:
+          name: ENVIRONMENT
+          value: prod
+      - run: conftest pull git::ssh://${OPA_POLICIES_REPO}
+      - run: conftest test --update git::ssh://${OPA_POLICIES_REPO} $(basename $SHOWFILE) -o table -p policy/common_policies/ -p policy/prod/ --all-namespaces
+
+  uat:
+    plan:
+      steps:
+      - run: if [ "${BASE_BRANCH_NAME}" != "main" ]; then echo "The BASE branch ($BASE_BRANCH_NAME) is NOT allowed to deploy in UAT environment" && exit 1; fi
+      - init
+      - plan
+      - run: terraform show -json $PLANFILE > $SHOWFILE
+      - run: cp $SHOWFILE "${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json"
+      - run: aws s3 cp "${DIR}/${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json" s3://${S3_STORING_PLANS}/plans/uat/planned/$(date +"%m_%d_%y")/ >/dev/null
+    apply:
+      steps:
+      - apply
+      - run: cp $SHOWFILE "${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json"
+      - run: aws s3 cp "${DIR}/${PROJECT_NAME}_${PULL_NUM}_$(git rev-parse HEAD).json" s3://${S3_STORING_PLANS}/plans/uat/applied/$(date +"%m_%d_%y")/ >/dev/null
+    policy_check:
+      steps:
+      - env:
+          name: ENVIRONMENT
+          value: uat
+      - run: conftest pull git::ssh://${OPA_POLICIES_REPO}
+      - run: conftest test --update git::ssh://${OPA_POLICIES_REPO} $(basename $SHOWFILE) -o table -p policy/common_policies/ -p policy/uat/ --all-namespaces
+ 
+  state_bucket:
+    plan:
+      steps:
+      - env:
+          name: TF_VAR_project_name
+          command: echo $BASE_REPO_NAME
+      - env:
+          name: ENVIRONMENT
+          command: echo $PROJECT_NAME | rev | cut -d "-" -f1 | rev
+      - env:
+          name: TF_CLI_ARGS_init
+          command: echo "-backend-config=\"${PROJECT_NAME}-backend.tfvars\""
+      - run: |
+              cat > ${PROJECT_NAME}-backend.tfvars <<EOL
+              bucket = "${S3_STATE_BUCKET}"
+              key    = "states/${BASE_REPO_NAME}/${ENVIRONMENT}/state_bucket/terraform.tfstate"
+              EOL
+      - run: rm -rf .terraform
+      - init
+      - plan
+      - run: terraform show -json $PLANFILE > $SHOWFILE
+    apply:
+      steps:
+      - apply
+    policy_check:
+      steps:
+      - env:
+          name: ENVIRONMENT
+          command: echo $PROJECT_NAME | rev | cut -d "-" -f1 | rev
+      - run: conftest pull git::ssh://${OPA_POLICIES_REPO}
+      - run: conftest test --update git::ssh://${OPA_POLICIES_REPO} $(basename $SHOWFILE) -o table -p policy/common_policies/ --all-namespaces
+
+policies:
+  owners:
+    users:
+      - denislav.tsonev
+      - user1
+      - user2
+  policy_sets:
+    - name: common-policies
+      path: /home/atlantis/opa-policies/common_policies/
+      source: local
