@@ -1,0 +1,8 @@
+apiVersion: test/v1alpha1
+kind: Component
+metadata:
+name: dadasasa
+labels:
+region: dada
+spec:
+type: s3
